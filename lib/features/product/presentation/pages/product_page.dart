@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/network/isar_service.dart'; 
+import '../../../bookmark/data/bookmark_model.dart'; // Jalur diperbaiki
 import '../cubit/product_cubit.dart';
 
 class ProductPage extends StatelessWidget {
@@ -12,7 +15,7 @@ class ProductPage extends StatelessWidget {
     return BlocProvider(
       create: (_) => sl<ProductCubit>()..fetchProducts(),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA), // Warna background abu-abu sangat terang
+        backgroundColor: const Color(0xFFF8F9FA),
         appBar: AppBar(
           elevation: 0,
           backgroundColor: Colors.white,
@@ -26,28 +29,17 @@ class ProductPage extends StatelessWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.bookmarks_outlined, color: Color(0xFF1A1A24)),
-              onPressed: () {
-                // Nanti kita arahkan ke halaman Bookmark
-              },
+              onPressed: () => context.push('/bookmarks'),
             ),
           ],
         ),
         body: BlocBuilder<ProductCubit, ProductState>(
           builder: (context, state) {
             if (state is ProductLoading) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.indigo),
-              );
+              return const Center(child: CircularProgressIndicator(color: Colors.indigo));
             } else if (state is ProductError) {
-              return Center(
-                child: Text(
-                  'Terjadi Kesalahan:\n${state.message}',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(color: Colors.red),
-                ),
-              );
+              return Center(child: Text(state.message));
             } else if (state is ProductLoaded) {
-              final products = state.products;
               return GridView.builder(
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -56,9 +48,9 @@ class ProductPage extends StatelessWidget {
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                 ),
-                itemCount: products.length,
+                itemCount: state.products.length,
                 itemBuilder: (context, index) {
-                  final product = products[index];
+                  final product = state.products[index];
                   return Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -74,18 +66,12 @@ class ProductPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Gambar Produk
                         Expanded(
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                            child: Image.network(
-                              product.image,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
+                            child: Image.network(product.image, fit: BoxFit.contain),
                           ),
                         ),
-                        // Detail Produk
                         Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
@@ -94,38 +80,30 @@ class ProductPage extends StatelessWidget {
                               Text(
                                 product.title,
                                 maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.indigo, // Menonjolkan teks [Diskon 10%]
-                                ),
+                                style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo),
                               ),
                               const SizedBox(height: 8),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    '\$${product.price}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF1A1A24),
-                                    ),
-                                  ),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.indigo.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(Icons.favorite_border, size: 20, color: Colors.indigo),
-                                      onPressed: () {
-                                        // Logika Isar nanti ditaruh di sini
-                                      },
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.all(6),
-                                    ),
+                                  Text('\$${product.price}', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  IconButton(
+                                    icon: const Icon(Icons.favorite_border, color: Colors.indigo),
+                                    onPressed: () async {
+                                      final bookmark = BookmarkModel()
+                                        ..productId = product.id
+                                        ..title = product.title
+                                        ..price = product.price
+                                        ..image = product.image;
+                                      
+                                      await sl<IsarService>().saveBookmark(bookmark);
+                                      
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Disimpan ke Favorit!')),
+                                        );
+                                      }
+                                    },
                                   ),
                                 ],
                               ),
