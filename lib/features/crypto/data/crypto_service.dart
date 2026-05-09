@@ -5,16 +5,16 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 class CryptoService {
   WebSocketChannel? _channel;
 
-  // 1. WebSocket untuk mengambil harga BTC secara Real-Time dari Binance
+  // 1. WebSocket untuk mengambil harga BTC secara Real-Time dari CoinCap (Syarat ETS)
   Stream<String> getBtcPriceStream() {
     _channel = WebSocketChannel.connect(
-      Uri.parse('wss://stream.binance.com:9443/ws/btcusdt@trade'),
+      Uri.parse('wss://ws.coincap.io/prices?assets=bitcoin'),
     );
     
     return _channel!.stream.map((event) {
       final data = jsonDecode(event);
-      // Mengambil harga (p) dan memformatnya jadi 2 angka di belakang koma
-      final price = double.parse(data['p']).toStringAsFixed(2);
+      // Mengambil harga dari key 'bitcoin' dan memformatnya jadi 2 angka di belakang koma
+      final price = double.parse(data['bitcoin']).toStringAsFixed(2);
       return price;
     });
   }

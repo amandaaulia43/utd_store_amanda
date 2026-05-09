@@ -79,8 +79,14 @@ class BookmarkPage extends StatelessWidget {
                       trailing: IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                         onPressed: () async {
-                          // Tambahkan fungsi hapus di IsarService jika perlu, 
-                          // atau biarkan dulu untuk demo watch()
+                          // Memanggil fungsi hapus
+                          await sl<IsarService>().deleteBookmark(item.id);
+                          
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Produk dihapus dari Favorit')),
+                            );
+                          }
                         },
                       ),
                     ),

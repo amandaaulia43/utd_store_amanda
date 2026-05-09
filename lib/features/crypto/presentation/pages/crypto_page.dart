@@ -166,7 +166,7 @@ class _CryptoPageState extends State<CryptoPage> {
               ElevatedButton.icon(
                 onPressed: _startHeavyTask,
                 icon: const Icon(Icons.bolt),
-                label: const Text('Mulai Hitung Tanpa Lag'),
+                label: const Text('Kalkulasi Pajak Kripto'),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 50)),
               ),
             const SizedBox(height: 10),

@@ -34,4 +34,12 @@ class IsarService {
     final isar = await db;
     return isar.bookmarkModels.where().watch(fireImmediately: true);
   }
+
+  // FUNGSI BARU: Untuk menghapus produk dari bookmark (favorit)
+  Future<void> deleteBookmark(int id) async {
+    final isar = await db;
+    await isar.writeTxn(() async {
+      await isar.bookmarkModels.delete(id);
+    });
+  }
 }
