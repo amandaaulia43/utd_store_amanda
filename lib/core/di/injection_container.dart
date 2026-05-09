@@ -19,8 +19,8 @@ void init() {
   // 3. Database (Isar)
   sl.registerLazySingleton(() => IsarService());
 
-  // 4. Product Data Layer
-  sl.registerLazySingleton(() => ProductRepository(sl()));
+  // 4. Product Data Layer (PERBAIKAN DI SINI: pakai apiClient:)
+  sl.registerLazySingleton(() => ProductRepository(apiClient: sl()));
 
   // 5. Product Presentation Layer (Cubit)
   sl.registerFactory(() => ProductCubit(sl()));

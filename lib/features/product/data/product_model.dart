@@ -2,19 +2,47 @@ class ProductModel {
   final int id;
   final String title;
   final double price;
-  final String image;
+  final String description;
   final String category;
+  final String image;
 
-  ProductModel({required this.id, required this.title, required this.price, required this.image, required this.category});
+  ProductModel({
+    required this.id,
+    required this.title,
+    required this.price,
+    required this.description,
+    required this.category,
+    required this.image,
+  });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
       id: json['id'],
-      // LOGIKA PERSONAL: NIM Ganjil (3) -> Tambahkan [Diskon 10%] pada judul
-      title: '[Diskon 10%] ${json['title']}',
+      title: json['title'],
+      // Mengubah harga menjadi double untuk mencegah error tipe data
       price: (json['price'] as num).toDouble(),
-      image: json['image'],
+      description: json['description'],
       category: json['category'],
+      image: json['image'],
+    );
+  }
+
+  // INI ADALAH FUNGSI COPYWITH YANG BIKIN ERROR MERAH TADI HILANG
+  ProductModel copyWith({
+    int? id,
+    String? title,
+    double? price,
+    String? description,
+    String? category,
+    String? image,
+  }) {
+    return ProductModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      price: price ?? this.price,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      image: image ?? this.image,
     );
   }
 }
