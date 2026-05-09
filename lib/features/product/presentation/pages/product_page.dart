@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/network/isar_service.dart'; 
-import '../../../bookmark/data/bookmark_model.dart'; // Jalur diperbaiki
+import '../../../bookmark/data/bookmark_model.dart';
 import '../cubit/product_cubit.dart';
 
 class ProductPage extends StatelessWidget {
@@ -13,7 +13,7 @@ class ProductPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ProductCubit>()..fetchProducts(),
+      create: (_) => sl.get<ProductCubit>()..fetchProducts(),
       child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FA),
         appBar: AppBar(
@@ -27,8 +27,13 @@ class ProductPage extends StatelessWidget {
             ),
           ),
           actions: [
+            // TOMBOL CRYPTO DITAMBAHKAN DI SINI
             IconButton(
-              icon: const Icon(Icons.bookmarks_outlined, color: Color(0xFF1A1A24)),
+              icon: const Icon(Icons.currency_bitcoin, color: Colors.orange),
+              onPressed: () => context.push('/crypto'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.bookmarks_outlined, color: const Color(0xFF1A1A24)),
               onPressed: () => context.push('/bookmarks'),
             ),
           ],
@@ -80,6 +85,7 @@ class ProductPage extends StatelessWidget {
                               Text(
                                 product.title,
                                 maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo),
                               ),
                               const SizedBox(height: 8),
@@ -96,7 +102,7 @@ class ProductPage extends StatelessWidget {
                                         ..price = product.price
                                         ..image = product.image;
                                       
-                                      await sl<IsarService>().saveBookmark(bookmark);
+                                      await sl.get<IsarService>().saveBookmark(bookmark);
                                       
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(

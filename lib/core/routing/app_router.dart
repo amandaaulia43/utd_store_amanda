@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/product/presentation/pages/product_page.dart';
 import '../../features/bookmark/presentation/pages/bookmark_page.dart';
+import '../../features/crypto/presentation/pages/crypto_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -17,6 +18,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/bookmarks',
       builder: (context, state) => const BookmarkPage(),
+    ),
+    GoRoute(
+      path: '/crypto',
+      builder: (context, state) => const CryptoPage(),
     ),
   ],
 );
