@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:isar/isar.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/network/isar_service.dart';
 import '../../data/bookmark_model.dart';

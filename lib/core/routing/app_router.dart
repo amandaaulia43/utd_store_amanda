@@ -14,5 +14,9 @@ final GoRouter appRouter = GoRouter(
       path: '/home',
       builder: (context, state) => const ProductPage(),
     ),
+    GoRoute(
+      path: '/bookmarks',
+      builder: (context, state) => const BookmarkPage(),
+    ),
   ],
 );
