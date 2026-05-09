@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-// Path sudah diperbaiki karena file sekarang ada di dalam folder pages
 import '../../../../core/di/injection_container.dart';
 import '../../data/crypto_service.dart';
 
@@ -14,20 +15,77 @@ class CryptoPage extends StatefulWidget {
 class _CryptoPageState extends State<CryptoPage> {
   bool _isCalculating = false;
   int? _calculationResult;
+  
+  // MethodChannel untuk Native Android (Poin 5)
+  static const platform = MethodChannel('com.utdstore.amanda/native');
+  String _batteryLevel = 'Belum dicek';
 
-  // Fungsi untuk menjalankan Isolate (Poin 4 ETS)
+  // Variabel untuk Logika Warna Harga Crypto
+  StreamSubscription? _priceSubscription;
+  String _currentPrice = "Loading...";
+  Color _priceColor = Colors.white;
+  double _prevPriceVal = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToPriceStream();
+  }
+
+  // Mendengarkan perubahan harga dan mengubah warna
+  void _listenToPriceStream() {
+    _priceSubscription = sl.get<CryptoService>().getBtcPriceStream().listen((priceString) {
+      final double newPrice = double.tryParse(priceString) ?? 0.0;
+      if (mounted) {
+        setState(() {
+          if (_prevPriceVal > 0) {
+            if (newPrice > _prevPriceVal) {
+              _priceColor = Colors.greenAccent; // Naik = Hijau
+            } else if (newPrice < _prevPriceVal) {
+              _priceColor = Colors.redAccent;   // Turun = Merah
+            } else {
+              _priceColor = Colors.white;
+            }
+          }
+          _currentPrice = '\$$priceString';
+          _prevPriceVal = newPrice;
+        });
+      }
+    }, onError: (error) {
+      if (mounted) setState(() => _currentPrice = "Error");
+    });
+  }
+
+  @override
+  void dispose() {
+    _priceSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _startHeavyTask() async {
     setState(() {
       _isCalculating = true;
       _calculationResult = null;
     });
-
-    final result = await sl<CryptoService>().runHeavyComputation();
-
+    final result = await sl.get<CryptoService>().runHeavyComputation();
     setState(() {
       _calculationResult = result;
       _isCalculating = false;
     });
+  }
+
+  Future<void> _checkBatteryAndToast() async {
+    try {
+      final int result = await platform.invokeMethod('getBatteryLevel');
+      setState(() {
+        _batteryLevel = '$result%';
+      });
+      await platform.invokeMethod('showToast', {'message': 'Sisa Baterai Amanda: $result%'});
+    } on PlatformException catch (e) {
+      setState(() {
+        _batteryLevel = "Gagal: '${e.message}'.";
+      });
+    }
   }
 
   @override
@@ -37,91 +95,83 @@ class _CryptoPageState extends State<CryptoPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        title: Text('Crypto Hub (NIM: 43)', 
-          style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text('Crypto & Native Hub', style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
+            // BATERAI (POIN 5)
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.indigo,
-                borderRadius: BorderRadius.circular(20),
-              ),
+              decoration: BoxDecoration(color: Colors.teal, borderRadius: BorderRadius.circular(20)),
               child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.currency_bitcoin, color: Colors.orange, size: 40),
+                      const Icon(Icons.battery_charging_full, color: Colors.white, size: 30),
                       const SizedBox(width: 10),
-                      Text('Bitcoin (BTC)', 
-                        style: GoogleFonts.poppins(color: Colors.white, fontSize: 18)),
+                      Text('Status Baterai Native', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  StreamBuilder<String>(
-                    stream: sl<CryptoService>().getBtcPriceStream(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Text('\$${snapshot.data}', 
-                          style: GoogleFonts.poppins(
-                            color: Colors.white, 
-                            fontSize: 32, 
-                            fontWeight: FontWeight.bold // TYPO DIPERBAIKI DI SINI
-                          ));
-                      }
-                      return const CircularProgressIndicator(color: Colors.white);
-                    },
+                  Text(_batteryLevel, style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: _checkBatteryAndToast,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.teal),
+                    child: const Text('Cek Baterai & Munculkan Toast'),
                   ),
-                  Text('Live Price from Binance', 
-                    style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
                 ],
               ),
             ),
-            
+            const SizedBox(height: 20),
+
+            // CRYPTO DENGAN WARNA (POIN 4)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: Colors.indigo, borderRadius: BorderRadius.circular(20)),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.currency_bitcoin, color: Colors.orange, size: 30),
+                      const SizedBox(width: 10),
+                      Text('Bitcoin (Coincap)', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _currentPrice, 
+                    style: GoogleFonts.poppins(color: _priceColor, fontSize: 32, fontWeight: FontWeight.bold)
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 30),
 
-            Text('Isolate Heavy Computation', 
-              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+            // ISOLATE (POIN 4)
+            Text('Isolate Heavy Computation', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('NIM 43: Looping 430 Juta kali', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey)),
             const SizedBox(height: 10),
-            Text('NIM 43: Looping 430.000.000 kali', 
-              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 20),
-            
             if (_isCalculating)
               const CircularProgressIndicator()
             else
               ElevatedButton.icon(
                 onPressed: _startHeavyTask,
                 icon: const Icon(Icons.bolt),
-                label: const Text('Mulai Hitung Pajak'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                ),
+                label: const Text('Mulai Hitung Tanpa Lag'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 50)),
               ),
-            
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             if (_calculationResult != null)
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.green),
-                ),
-                child: Text('Berhasil menghitung $_calculationResult data tanpa membuat UI macet!',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(color: Colors.green, fontWeight: FontWeight.w500)),
-              ),
+              Text('Berhasil menghitung $_calculationResult data!', style: GoogleFonts.poppins(color: Colors.green, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
