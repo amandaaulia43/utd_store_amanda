@@ -5,36 +5,47 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 class CryptoService {
   WebSocketChannel? _channel;
 
-  // 1. WebSocket untuk mengambil harga BTC secara Real-Time dari CoinCap (Syarat ETS)
-  Stream<String> getBtcPriceStream() {
-    _channel = WebSocketChannel.connect(
-      Uri.parse('wss://ws.coincap.io/prices?assets=bitcoin'),
-    );
-    
-    return _channel!.stream.map((event) {
-      final data = jsonDecode(event);
-      // Mengambil harga dari key 'bitcoin' dan memformatnya jadi 2 angka di belakang koma
-      final price = double.parse(data['bitcoin']).toStringAsFixed(2);
-      return price;
-    });
+  // Menggunakan Stream dengan async* agar lebih stabil saat koneksi naik-turun
+  Stream<String> getBtcPriceStream() async* {
+    while (true) {
+      try {
+        // Kita pakai Binance karena datanya jauh lebih cepat/real-time untuk video demo
+        _channel = WebSocketChannel.connect(
+          Uri.parse('wss://stream.binance.com:9443/ws/btcusdt@trade'),
+        );
+
+        await for (var event in _channel!.stream) {
+          final data = jsonDecode(event);
+          if (data != null && data['p'] != null) {
+            // 'p' adalah key untuk price di Binance
+            double price = double.parse(data['p']);
+            yield price.toStringAsFixed(2);
+          }
+        }
+      } catch (e) {
+        // Jika error (misal internet putus), tunggu 3 detik lalu coba sambung lagi
+        // Ini mencegah tulisan "Error" muncul di layar HP
+        yield "Loading..."; 
+        await Future.delayed(const Duration(seconds: 3));
+      }
+    }
   }
 
   void closeConnection() {
     _channel?.sink.close();
   }
 
-  // 2. Fungsi untuk menjalankan Isolate agar UI tidak freeze
+  // LOGIKA ISOLATE (Syarat ETS)
   Future<int> runHeavyComputation() async {
-    // Isolate.run akan mengeksekusi fungsi _heavyTask di thread terpisah
     return await Isolate.run(_heavyTask);
   }
 }
 
-// SYARAT ETS: Fungsi ini wajib di luar class (Top-level function) agar bisa masuk Isolate
+// Fungsi di luar class (Top-level) agar Isolate bisa jalan
 int _heavyTask() {
   int result = 0;
-  // LOGIKA PERSONAL: 2 Digit Terakhir NIM (43) x 10.000.000 = 430.000.000
-  final int loopCount = 430000000; 
+  // LOGIKA NIM 43: 430.000.000 kali looping
+  const int loopCount = 430000000; 
   
   for (int i = 0; i < loopCount; i++) {
     result++;

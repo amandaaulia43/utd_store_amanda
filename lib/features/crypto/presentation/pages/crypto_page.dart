@@ -16,11 +16,11 @@ class _CryptoPageState extends State<CryptoPage> {
   bool _isCalculating = false;
   int? _calculationResult;
   
-  // MethodChannel untuk Native Android (Poin 5)
+  // MethodChannel untuk fitur Native Android
   static const platform = MethodChannel('com.utdstore.amanda/native');
   String _batteryLevel = 'Belum dicek';
 
-  // Variabel untuk Logika Warna Harga Crypto
+  // Variabel untuk Logika Real-time Price
   StreamSubscription? _priceSubscription;
   String _currentPrice = "Loading...";
   Color _priceColor = Colors.white;
@@ -32,17 +32,24 @@ class _CryptoPageState extends State<CryptoPage> {
     _listenToPriceStream();
   }
 
-  // Mendengarkan perubahan harga dan mengubah warna
+  // Mendengarkan perubahan harga dari Stream
   void _listenToPriceStream() {
     _priceSubscription = sl.get<CryptoService>().getBtcPriceStream().listen((priceString) {
+      // Menangani status gagal koneksi dari service
+      if (priceString == "Gagal Konek" || priceString.contains("Error")) {
+        if (mounted) setState(() => _currentPrice = "Cek Koneksi Internet");
+        return;
+      }
+
       final double newPrice = double.tryParse(priceString) ?? 0.0;
       if (mounted) {
         setState(() {
+          // Logika Perubahan Warna: Hijau (Naik), Merah (Turun), Putih (Tetap)
           if (_prevPriceVal > 0) {
             if (newPrice > _prevPriceVal) {
-              _priceColor = Colors.greenAccent; // Naik = Hijau
+              _priceColor = Colors.greenAccent; 
             } else if (newPrice < _prevPriceVal) {
-              _priceColor = Colors.redAccent;   // Turun = Merah
+              _priceColor = Colors.redAccent;   
             } else {
               _priceColor = Colors.white;
             }
@@ -52,7 +59,8 @@ class _CryptoPageState extends State<CryptoPage> {
         });
       }
     }, onError: (error) {
-      if (mounted) setState(() => _currentPrice = "Error");
+      // Menangani error jika terjadi gangguan socket/jaringan
+      if (mounted) setState(() => _currentPrice = "Koneksi Bermasalah");
     });
   }
 
@@ -62,24 +70,31 @@ class _CryptoPageState extends State<CryptoPage> {
     super.dispose();
   }
 
+  // Menjalankan Heavy Task (Isolate) agar UI tidak freeze
   Future<void> _startHeavyTask() async {
     setState(() {
       _isCalculating = true;
       _calculationResult = null;
     });
+    
     final result = await sl.get<CryptoService>().runHeavyComputation();
-    setState(() {
-      _calculationResult = result;
-      _isCalculating = false;
-    });
+    
+    if (mounted) {
+      setState(() {
+        _calculationResult = result;
+        _isCalculating = false;
+      });
+    }
   }
 
+  // Mengambil data level baterai via Method Channel (Native)
   Future<void> _checkBatteryAndToast() async {
     try {
       final int result = await platform.invokeMethod('getBatteryLevel');
       setState(() {
         _batteryLevel = '$result%';
       });
+      // Menampilkan Toast Native Android
       await platform.invokeMethod('showToast', {'message': 'Sisa Baterai Amanda: $result%'});
     } on PlatformException catch (e) {
       setState(() {
@@ -95,7 +110,10 @@ class _CryptoPageState extends State<CryptoPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        title: Text('Crypto & Native Hub', style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text(
+          'Crypto & Native Hub', 
+          style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.bold)
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
@@ -105,10 +123,13 @@ class _CryptoPageState extends State<CryptoPage> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            // BATERAI (POIN 5)
+            // BAGIAN NATIVE: BATERAI
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.teal, borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(
+                color: Colors.teal, 
+                borderRadius: BorderRadius.circular(20)
+              ),
               child: Column(
                 children: [
                   Row(
@@ -116,15 +137,24 @@ class _CryptoPageState extends State<CryptoPage> {
                     children: [
                       const Icon(Icons.battery_charging_full, color: Colors.white, size: 30),
                       const SizedBox(width: 10),
-                      Text('Status Baterai Native', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Status Baterai Native', 
+                        style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text(_batteryLevel, style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                  Text(
+                    _batteryLevel, 
+                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)
+                  ),
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: _checkBatteryAndToast,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.teal),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white, 
+                      foregroundColor: Colors.teal
+                    ),
                     child: const Text('Cek Baterai & Munculkan Toast'),
                   ),
                 ],
@@ -132,10 +162,13 @@ class _CryptoPageState extends State<CryptoPage> {
             ),
             const SizedBox(height: 20),
 
-            // CRYPTO DENGAN WARNA (POIN 4)
+            // BAGIAN CRYPTO: LIVE PRICE
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.indigo, borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(
+                color: Colors.indigo, 
+                borderRadius: BorderRadius.circular(20)
+              ),
               child: Column(
                 children: [
                   Row(
@@ -143,23 +176,37 @@ class _CryptoPageState extends State<CryptoPage> {
                     children: [
                       const Icon(Icons.currency_bitcoin, color: Colors.orange, size: 30),
                       const SizedBox(width: 10),
-                      Text('Bitcoin (Coincap)', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Bitcoin (Real-time)', 
+                        style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Text(
                     _currentPrice, 
-                    style: GoogleFonts.poppins(color: _priceColor, fontSize: 32, fontWeight: FontWeight.bold)
+                    style: GoogleFonts.poppins(
+                      color: _priceColor, 
+                      fontSize: 32, 
+                      fontWeight: FontWeight.bold
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 30),
 
-            // ISOLATE (POIN 4)
-            Text('Isolate Heavy Computation', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('NIM 43: Looping 430 Juta kali', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 10),
+            // BAGIAN ISOLATE: HEAVY COMPUTATION
+            Text(
+              'Isolate Heavy Computation', 
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)
+            ),
+            Text(
+              'NIM 43: Looping 430 Juta kali', 
+              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey)
+            ),
+            const SizedBox(height: 15),
             if (_isCalculating)
               const CircularProgressIndicator()
             else
@@ -167,11 +214,26 @@ class _CryptoPageState extends State<CryptoPage> {
                 onPressed: _startHeavyTask,
                 icon: const Icon(Icons.bolt),
                 label: const Text('Kalkulasi Pajak Kripto'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 50)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo, 
+                  foregroundColor: Colors.white, 
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                ),
               ),
             const SizedBox(height: 10),
             if (_calculationResult != null)
-              Text('Berhasil menghitung $_calculationResult data!', style: GoogleFonts.poppins(color: Colors.green, fontWeight: FontWeight.w600)),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10)
+                ),
+                child: Text(
+                  'Berhasil menghitung $_calculationResult data!', 
+                  style: GoogleFonts.poppins(color: Colors.green, fontWeight: FontWeight.w600)
+                ),
+              ),
           ],
         ),
       ),
